@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <title>NYC Commuting</title>
+  <script src="libraries/p5.min.js" type="text/javascript"></script>
+  <script src="libraries/p5.dom.min.js"></script>
+  <script src="libraries/mappa.js" type="text/javascript"></script>
+</head>
+<body>
+
+  <div id="myContainer"></div>
+
+  <script>
+  var key = 'pk.eyJ1Ijoid2lsbGdlYXJ5IiwiYSI6ImNpdW9wcmkxNjAxbDUydXQ0MzFwdmdvOWkifQ.9YIdQhYTOpRpocyFK-tBNA';
+
+  // Initialize the map with MapboxGL as the basemap
+  var mappa = new Mappa('MapboxGL', key);
+
+  // Set basemap location, zoom and style
+  var options = {
+    lat: 40.7579484,
+    lng: -73.9635521,
+    zoom: 10,
+    style: "mapbox://styles/mapbox/dark-v9"
+  }
+
+  // Initialize some variables
+  var myMap;
+  var data;
+  var originLats = [];
+  var originLons = [];
+  var destLats = [];
+  var destLons = [];
+  var time = 0.0;
+  var duration = 10.0;
+  var pctTravelled = 0.0;
+
+  // Preload csv file
+  function preload(){
+    data = loadTable("output.csv", 'csv', 'header');
+  }
+
+  // Setup function runs once
+  function setup(){
+
+    // Parse the data
+    for (let i=0; i<data.getRowCount(); i++){
+
+      // Get lats and lons
+      let originLat = data.get(i, "origin_lat");
+      let originLon = data.get(i, "origin_lon");
+      let destLat = data.get(i, "dest_lat");
+      let destLon = data.get(i, "dest_lon");
+
+      // Add lats and lons to lists
+      originLats.push(originLat);
+      originLons.push(originLon);
+      destLats.push(destLat);
+      destLons.push(destLon);
+    }
+
+    // Create a canvas
+    canvas = createCanvas(windowWidth-20, windowHeight-20);
+    canvas.parent('myContainer');
+
+    // Create the map
+    myMap = mappa.tileMap(options);
+
+    // Overlay canvas onto the map
+    myMap.overlay(canvas)
+  }
+
+  // Main draw function runs 60 fps
+  function draw(){
+    background(0, 0);
+    drawLines();
+    time += 1;
+  }
+
+  function drawLines(){
+    // Clear the canvas each frame
+    clear();
+
+    // For every row in the data table
+    for (let i=0; i<data.getRowCount(); i++){
+
+      // Get the lats and lons
+      originLat = originLats[i];
+      originLon = originLons[i];
+      destLat = destLats[i];
+      destLon = destLons[i];
+
+      // Convert lats and lons to screen positions
+      let originPos = myMap.latLngToPixel(originLat, originLon);
+      let destPos = myMap.latLngToPixel(destLat, destLon);
+
+      // Define origin and destination colors
+      origin_color = color(225, 205, 25, 255);
+      destination_color = color(255, 20, 0, 255);
+
+      // Calculate distance between origin position and mouse
+      let distance = dist(originPos.x, originPos.y, mouseX, mouseY);
+
+      // If distance < 25 pixesl, draw gradient line
+      if (distance < 25) {
+        noStroke();
+        gradientLine(originPos.x, originPos.y, destPos.x, destPos.y,
+                     origin_color, destination_color);
+      }
+    }
+  }
+
+  // Custom function to make a gradient line
+  function gradientLine(x1, y1, x2, y2, colorA, colorB) {
+    let deltaX = x2 - x1;
+    let deltaY = y2 - y1;
+    let tStep = 1.0 / dist(x1, y1, x2, y2);
+    for (let t= 0.0; t < 1.0; t += tStep) {
+      fill(lerpColor(colorA, colorB, t));
+       ellipse(x1+t*deltaX, y1+t*deltaY, 2, 2);
+    }
+  }
+
+  </script>
+
+</body>
+</html>
